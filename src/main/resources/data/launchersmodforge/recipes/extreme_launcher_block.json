@@ -1,0 +1,23 @@
+{
+    "type": "minecraft:crafting_shaped",
+    "pattern": [
+        "#D#",
+        "#T#",
+        "###"
+    ],
+    "key": {
+        "T": {
+            "item": "minecraft:tnt"
+        },
+        "#": {
+            "item": "minecraft:diamond"
+        },
+        "D": {
+            "item": "launchersmodforge:powered_launcher_block"
+        }
+    },
+    "result": {
+        "item": "launchersmodforge:extreme_launcher_block",
+        "count": 1
+    }
+}

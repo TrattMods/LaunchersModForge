@@ -1,0 +1,9 @@
+{
+    "parent": "launchersmodforge:template/template_launcher_block",
+    "textures": {
+        "bottom": "launchersmodforge:block/launcher_block_bottom",
+        "side": "launchersmodforge:block/launcher_block_side",
+        "top": "launchersmodforge:block/launcher_block_top"
+    }
+}
+
