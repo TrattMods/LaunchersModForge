@@ -51,9 +51,9 @@ public abstract class AbstractLauncherBlock extends Block implements ITileEntity
     {
         FACING = DirectionalBlock.FACING;
     }
-    public AbstractLauncherBlock(Properties properties)
+    public AbstractLauncherBlock()
     {
-        super(properties.noOcclusion());
+        super(AbstractBlock.Properties.of(Material.PISTON).strength(0.7F, 0.6F).sound(SoundType.METAL).dynamicShape().noOcclusion());
         this.registerDefaultState(this.getStateDefinition().any().setValue(FACING, Direction.NORTH));
     }
 

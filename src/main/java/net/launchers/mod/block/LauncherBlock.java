@@ -30,7 +30,7 @@ public class LauncherBlock extends AbstractLauncherBlock
     public static final String ID = "launcher_block";
     public LauncherBlock()
     {
-        super(AbstractBlock.Properties.of(Material.METAL).strength(0.8F, 0.5F).sound(SoundType.METAL).noOcclusion().dynamicShape());
+        super();
         baseMultiplier = 1.25F;
         stackPowerPercentage = 0.335F;
         stackMultiplier = baseMultiplier * stackPowerPercentage;

@@ -21,7 +21,7 @@ public class PoweredLauncherBlock extends AbstractLauncherBlock
     public static final String ID = "powered_launcher_block";
     public PoweredLauncherBlock()
     {
-        super(AbstractBlock.Properties.of(Material.PISTON).requiresCorrectToolForDrops().strength(40F, 900F).sound(SoundType.STONE));
+        super();
         baseMultiplier = 2.125F;
         stackPowerPercentage = 0.2975F;
         stackMultiplier = baseMultiplier * stackPowerPercentage;

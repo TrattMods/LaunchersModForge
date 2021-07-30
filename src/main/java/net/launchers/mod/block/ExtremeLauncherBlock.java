@@ -21,7 +21,7 @@ public class ExtremeLauncherBlock extends AbstractLauncherBlock
     public static final String ID = "extreme_launcher_block";
     public ExtremeLauncherBlock()
     {
-        super(AbstractBlock.Properties.of(Material.PISTON).requiresCorrectToolForDrops().strength(40F, 900F).sound(SoundType.STONE));
+        super();
         baseMultiplier = 2.95F;
         stackPowerPercentage = 0.275F;
         stackMultiplier = baseMultiplier * stackPowerPercentage;
