@@ -1,36 +1,36 @@
 package net.launchers.mod.utils;
 
-import net.minecraft.util.Direction;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.vector.Vector3d;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 public final class MathUtils
 {
-    public static Vector3d fromDirection(Direction direction)
+    public static Vec3 fromDirection(Direction direction)
     {
         switch(direction)
         {
             case UP:
-                return new Vector3d(0, 1, 0);
+                return new Vec3(0, 1, 0);
             case DOWN:
-                return new Vector3d(0, -1, 0);
+                return new Vec3(0, -1, 0);
             case EAST:
-                return new Vector3d(1, 0, 0);
+                return new Vec3(1, 0, 0);
             case WEST:
-                return new Vector3d(-1, 0, 0);
+                return new Vec3(-1, 0, 0);
             case NORTH:
-                return new Vector3d(0, 0, -1);
+                return new Vec3(0, 0, -1);
             case SOUTH:
-                return new Vector3d(0, 0, 1);
+                return new Vec3(0, 0, 1);
             default:
-                return new Vector3d(0, 0, 0);
+                return new Vec3(0, 0, 0);
         }
     }
     
-    public static AxisAlignedBB getExpansionBlock(BlockPos pos, Direction facing)
+    public static AABB getExpansionBlock(BlockPos pos, Direction facing)
     {
-        AxisAlignedBB res = new AxisAlignedBB(pos);
+        AABB res = new AABB(pos);
         switch(facing)
         {
             case UP:

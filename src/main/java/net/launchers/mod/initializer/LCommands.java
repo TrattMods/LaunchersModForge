@@ -1,18 +1,13 @@
 package net.launchers.mod.initializer;
 
 import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import com.mojang.brigadier.tree.LiteralCommandNode;
-import net.launchers.mod.block.LauncherBlock;
 import net.launchers.mod.block.abstraction.AbstractLauncherBlock;
-import net.launchers.mod.loader.LLoader;
-import net.minecraft.block.AbstractBannerBlock;
-import net.minecraft.command.CommandSource;
-import net.minecraft.command.Commands;
-import net.minecraft.util.text.StringTextComponent;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +22,7 @@ public class LCommands
     private static final String LAUNCHER_ID = "l";
     private static final String P_LAUNCHER_ID = "p";
     private static final String E_LAUNCHER_ID = "e";
-    public static void initialize(CommandDispatcher<CommandSource> dispatcher)
+    public static void initialize(CommandDispatcher<CommandSourceStack> dispatcher)
     {
         ArrayList<String> launchersList = new ArrayList<>();
         dispatcher.register(Commands.literal("lcalc")
@@ -35,14 +30,14 @@ public class LCommands
                         .executes(ctx ->
                         {
                             launchersList.add(getString(ctx, "first"));
-                            return checkIdsAndPrintForce(launchersList, ctx);
+                            return checkIdsAndPrintForce(launchersList, ctx.getSource());
                         })
                         .then(Commands.argument("second", word()).suggests(suggestedStrings())
                                 .executes(ctx ->
                                         {
                                             launchersList.add(getString(ctx, "first"));
                                             launchersList.add(getString(ctx, "second"));
-                                            return checkIdsAndPrintForce(launchersList, ctx);
+                                            return checkIdsAndPrintForce(launchersList, ctx.getSource());
                                         }
                                 )
                                 .then(Commands.argument("third", word()).suggests(suggestedStrings())
@@ -51,7 +46,7 @@ public class LCommands
                                                     launchersList.add(getString(ctx, "first"));
                                                     launchersList.add(getString(ctx, "second"));
                                                     launchersList.add(getString(ctx, "third"));
-                                                    return checkIdsAndPrintForce(launchersList, ctx);
+                                                    return checkIdsAndPrintForce(launchersList, ctx.getSource());
                                                 }
                                         )
                                         .then(Commands.argument("fourth", word()).suggests(suggestedStrings())
@@ -61,7 +56,7 @@ public class LCommands
                                                             launchersList.add(getString(ctx, "second"));
                                                             launchersList.add(getString(ctx, "third"));
                                                             launchersList.add(getString(ctx, "fourth"));
-                                                            return checkIdsAndPrintForce(launchersList, ctx);
+                                                            return checkIdsAndPrintForce(launchersList, ctx.getSource());
                                                         }
                                                 )
                                         )
@@ -70,7 +65,7 @@ public class LCommands
                 )
                 .executes(ctx ->
                 {
-                    return checkIdsAndPrintForce(launchersList, ctx);
+                    return checkIdsAndPrintForce(launchersList, ctx.getSource());
                 })
         );
     }
@@ -88,32 +83,22 @@ public class LCommands
 
     private static float getStackForceByLauncherId(String id)
     {
-        switch(id)
-        {
-            case LAUNCHER_ID:
-                return ((AbstractLauncherBlock)LBlocks.LAUNCHER_BLOCK.get().getBlock()).stackMultiplier;
-            case P_LAUNCHER_ID:
-                return ((AbstractLauncherBlock)LBlocks.POWERED_LAUNCHER_BLOCK.get().getBlock()).stackMultiplier;
-            case E_LAUNCHER_ID:
-                return ((AbstractLauncherBlock)LBlocks.EXTREME_LAUNCHER_BLOCK.get().getBlock()).stackMultiplier;
-            default:
-                return 0F;
-        }
+        return switch (id) {
+            case LAUNCHER_ID -> ((AbstractLauncherBlock) LBlocks.LAUNCHER_BLOCK.get()).stackMultiplier;
+            case P_LAUNCHER_ID -> ((AbstractLauncherBlock) LBlocks.POWERED_LAUNCHER_BLOCK.get()).stackMultiplier;
+            case E_LAUNCHER_ID -> ((AbstractLauncherBlock) LBlocks.EXTREME_LAUNCHER_BLOCK.get()).stackMultiplier;
+            default -> 0F;
+        };
     }
 
     private static float getBaseForceByLauncherId(String id)
     {
-        switch(id)
-        {
-            case LAUNCHER_ID:
-                return ((AbstractLauncherBlock)LBlocks.LAUNCHER_BLOCK.get().getBlock()).baseMultiplier;
-            case P_LAUNCHER_ID:
-                return ((AbstractLauncherBlock)LBlocks.POWERED_LAUNCHER_BLOCK.get().getBlock()).baseMultiplier;
-            case E_LAUNCHER_ID:
-                return ((AbstractLauncherBlock)LBlocks.EXTREME_LAUNCHER_BLOCK.get().getBlock()).baseMultiplier;
-            default:
-                return 0F;
-        }
+        return switch (id) {
+            case LAUNCHER_ID -> ((AbstractLauncherBlock) LBlocks.LAUNCHER_BLOCK.get()).baseMultiplier;
+            case P_LAUNCHER_ID -> ((AbstractLauncherBlock) LBlocks.POWERED_LAUNCHER_BLOCK.get()).baseMultiplier;
+            case E_LAUNCHER_ID -> ((AbstractLauncherBlock) LBlocks.EXTREME_LAUNCHER_BLOCK.get()).baseMultiplier;
+            default -> 0F;
+        };
     }
 
     private static float getForce(ArrayList<String> ids)
@@ -127,15 +112,15 @@ public class LCommands
         return base * multipier;
     }
 
-    private static int checkIdsAndPrintForce(ArrayList<String> launchersList, CommandContext<CommandSource> context)
+    private static int checkIdsAndPrintForce(ArrayList<String> launchersList, CommandSourceStack context)
     {
         if(!areLauncherIdValid(launchersList))
         {
-            context.getSource().sendFailure((new StringTextComponent("\nOne or more parameters are not correct.\n" +
+            context.sendSystemMessage(Component.literal("\nOne or more parameters are not correct.\n" +
                     "Usage:\n" +
                     "l: Launcher\n" +
                     "p: Powered Launcher\n" +
-                    "e: Extreme Launcher\n")));
+                    "e: Extreme Launcher\n"));
             launchersList.clear();
             return 0;
         }
@@ -145,12 +130,12 @@ public class LCommands
             printString += launchersList.get(i) + "\n";
         }
         printString += "Force: " + getForce(launchersList);
-        context.getSource().sendSuccess(new StringTextComponent(printString), false);
+        context.sendSystemMessage(Component.literal(printString));
         launchersList.clear();
         return 1;
     }
 
-    public static SuggestionProvider<CommandSource> suggestedStrings()
+    public static SuggestionProvider<CommandSourceStack> suggestedStrings()
     {
         ArrayList<String> suggestions = new ArrayList<>();
         suggestions.add(LAUNCHER_ID);

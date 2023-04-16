@@ -1,29 +1,30 @@
 package net.launchers.mod.network.packet;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import net.launchers.mod.initializer.LNetwork;
 import net.launchers.mod.loader.LLoader;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.player.ClientPlayerEntity;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.network.PacketBuffer;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.math.vector.Vector3d;
-import net.minecraftforge.fml.network.NetworkEvent;
-import net.minecraftforge.fml.network.PacketDistributor;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.network.HandshakeMessages;
+import net.minecraftforge.network.NetworkEvent;
+import net.minecraftforge.network.PacketDistributor;
 
 import java.util.function.Supplier;
 
 public class UnboundedEntityVelocityS2CPacket
 {
-    private  Vector3d velocity;
+    private Vec3 velocity;
     private  int entityId;
-    public UnboundedEntityVelocityS2CPacket(PacketBuffer buffer)
+    public UnboundedEntityVelocityS2CPacket(FriendlyByteBuf buffer)
     {
         read(buffer);
     }
-    public UnboundedEntityVelocityS2CPacket(int entityId, Vector3d velocity)
+    public UnboundedEntityVelocityS2CPacket(int entityId, Vec3 velocity)
     {
         this.velocity = velocity;
         this.entityId = entityId;
@@ -31,31 +32,31 @@ public class UnboundedEntityVelocityS2CPacket
     
     public UnboundedEntityVelocityS2CPacket(int entityId, float x, float y, float z)
     {
-        this(entityId, new Vector3d(x, y, z));
+        this(entityId, new Vec3(x, y, z));
     }
     
-    public UnboundedEntityVelocityS2CPacket(Entity entity, Vector3d velocity)
+    public UnboundedEntityVelocityS2CPacket(Entity entity, Vec3 velocity)
     {
         this(entity.getId(), velocity);
     }
     
     public UnboundedEntityVelocityS2CPacket(Entity entity, float x, float y, float z)
     {
-        this(entity.getId(), new Vector3d(x, y, z));
+        this(entity.getId(), new Vec3(x, y, z));
     }
     
-    public void sendTo(PlayerEntity player)
+    public void sendTo(Player player)
     {
-        PacketBuffer buf = new PacketBuffer(Unpooled.buffer());
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
         write(buf);
-        LNetwork.channel.send(PacketDistributor.PLAYER.with(()->(ServerPlayerEntity) player), this);
+        LNetwork.channel.send(PacketDistributor.PLAYER.with(()->(ServerPlayer) player), this);
     }
     
     public boolean handle(Supplier<NetworkEvent.Context> ctx)
     {
         ctx.get().enqueueWork(() ->
         {
-            ClientPlayerEntity player = Minecraft.getInstance().player;
+            LocalPlayer player = Minecraft.getInstance().player;
             LLoader.LOGGER.info("Entity: "+entityId+", player: "+player.getId());
             Entity targetEntity =  player.level.getEntity(entityId);
             targetEntity.setDeltaMovement(velocity);
@@ -63,17 +64,17 @@ public class UnboundedEntityVelocityS2CPacket
         return true;
     }
     
-    public void write(PacketBuffer buf)
+    public void write(FriendlyByteBuf buf)
     {
-        buf.writeVarInt(entityId);
+        buf.writeInt(entityId);
         buf.writeDouble(velocity.x);
         buf.writeDouble(velocity.y);
         buf.writeDouble(velocity.z);
     }
     
-    public void read(PacketBuffer buf)
+    public void read(FriendlyByteBuf buf)
     {
-        entityId = buf.readVarInt();
-        velocity = new Vector3d(buf.readDouble(), buf.readDouble(), buf.readDouble());
+        entityId = buf.readInt();
+        velocity = new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble());
     }
 }

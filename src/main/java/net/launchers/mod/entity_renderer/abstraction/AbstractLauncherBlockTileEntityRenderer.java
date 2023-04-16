@@ -1,53 +1,59 @@
 package net.launchers.mod.entity_renderer.abstraction;
 
-import com.mojang.blaze3d.matrix.MatrixStack;
-import com.mojang.blaze3d.vertex.IVertexBuilder;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.launchers.mod.block.abstraction.AbstractLauncherBlock;
 import net.launchers.mod.entity.abstraction.AbstractLauncherBlockTileEntity;
 import net.launchers.mod.utils.MathUtils;
-import net.minecraft.block.BlockState;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.BlockRendererDispatcher;
-import net.minecraft.client.renderer.IRenderTypeBuffer;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.model.IBakedModel;
-import net.minecraft.client.renderer.tileentity.TileEntityRenderer;
-import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
-import net.minecraft.util.math.vector.Vector3d;
+import net.minecraft.client.renderer.block.BlockRenderDispatcher;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.resources.model.BakedModel;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 
+public class AbstractLauncherBlockTileEntityRenderer implements BlockEntityRenderer {
+    private final BlockEntityRendererProvider.Context context ;
 
-import java.util.Random;
-
-public class AbstractLauncherBlockTileEntityRenderer<T extends AbstractLauncherBlockTileEntity> extends TileEntityRenderer<T>
-{
-    public AbstractLauncherBlockTileEntityRenderer(TileEntityRendererDispatcher p_i226006_1_)
+    public AbstractLauncherBlockTileEntityRenderer(BlockEntityRendererProvider.Context context)
     {
-        super(p_i226006_1_);
+        this.context = context;
     }
-    protected final BlockRendererDispatcher blockRenderManager = Minecraft.getInstance().getBlockRenderer();
+
+
     @Override
-    public void render(T blockEntity, float tickDelta, MatrixStack matrices, IRenderTypeBuffer renderTypeBuffer, int light, int overlay)
-    {
+    public void render(BlockEntity blockEntity, float tickDelta, PoseStack matrices, MultiBufferSource renderTypeBuffer, int light, int overlay) {
+        AbstractLauncherBlockTileEntity lEntity = (AbstractLauncherBlockTileEntity) blockEntity;
         BlockState entityState = blockEntity.getBlockState();
         matrices.pushPose();
-
-        float extension = blockEntity.getDeltaProgress(tickDelta);
+        BlockRenderDispatcher dispatcher = context.getBlockRenderDispatcher();
+        float extension = lEntity.getDeltaProgress(tickDelta);
+        extension=0;
         //LLoader.LOGGER.info(extension);
-        IBakedModel model = null;
+        BakedModel model = null;
         if(extension < 0.35F)
         {
-            model = blockRenderManager.getBlockModel(entityState.setValue(AbstractLauncherBlock.MODELS, 2).setValue(AbstractLauncherBlock.FACING, entityState.getValue(AbstractLauncherBlock.FACING)));
+            model = dispatcher.getBlockModel(entityState.setValue(AbstractLauncherBlock.MODELS, 2)
+                    .setValue(AbstractLauncherBlock.FACING, entityState.getValue(AbstractLauncherBlock.FACING)));
         }
         else
         {
-            model = blockRenderManager.getBlockModel(entityState.setValue(AbstractLauncherBlock.MODELS, 1).setValue(AbstractLauncherBlock.FACING, entityState.getValue(AbstractLauncherBlock.FACING)));
+            model = dispatcher.getBlockModel(entityState.setValue(AbstractLauncherBlock.MODELS, 1)
+                    .setValue(AbstractLauncherBlock.FACING, entityState.getValue(AbstractLauncherBlock.FACING)));
         }
-        Vector3d translation = MathUtils.fromDirection(entityState.getValue(AbstractLauncherBlock.FACING));
+        Vec3 translation = MathUtils.fromDirection(entityState.getValue(AbstractLauncherBlock.FACING));
         matrices.translate(translation.x * extension, translation.y * extension, translation.z * extension);
 
-        IVertexBuilder vertexConsumer = renderTypeBuffer.getBuffer(RenderType.solid());
-        this.blockRenderManager.getModelRenderer().tesselateBlock(blockEntity.getLevel(), model, entityState, blockEntity.getBlockPos(), matrices, vertexConsumer, true, new Random(), (long)4, overlay);
+        VertexConsumer vertexConsumer = renderTypeBuffer.getBuffer(RenderType.solid());
+        dispatcher.getModelRenderer()
+                .tesselateBlock(blockEntity.getLevel(), model, entityState, blockEntity.getBlockPos(), matrices, vertexConsumer, true, RandomSource.create(), (long)4, overlay);
 
         matrices.popPose();
     }
+
 }

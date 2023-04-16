@@ -1,22 +1,23 @@
 package net.launchers.mod.entity.abstraction;
 
-import jdk.nashorn.internal.codegen.CompileUnit;
-import net.launchers.mod.loader.LLoader;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.network.NetworkManager;
-import net.minecraft.network.play.server.SUpdateTileEntityPacket;
-import net.minecraft.tileentity.ITickableTileEntity;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.tileentity.TileEntityType;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.shapes.VoxelShape;
-import net.minecraftforge.common.util.Constants;
+import com.mojang.math.Constants;
+import net.launchers.mod.initializer.LEntities;
+import net.minecraft.client.renderer.FaceInfo;
+import net.minecraft.client.renderer.texture.Tickable;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.Connection;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.Nullable;
 
-import javax.annotation.Nullable;
-
-public class AbstractLauncherBlockTileEntity extends TileEntity implements ITickableTileEntity
+public class AbstractLauncherBlockTileEntity extends BlockEntity implements Tickable
 {
     private final VoxelShape RETRACTED_BASE_SHAPE = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 16.0D, 16.0D);
     private final VoxelShape EXTENDED_BASE_SHAPE = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 12.0D, 16.0D);
@@ -28,9 +29,6 @@ public class AbstractLauncherBlockTileEntity extends TileEntity implements ITick
     {EXTENDED, RETRACTED, MOVING}
 
     public LauncherState[] states;
-    private float extensionStride = 1F; // 1/stride ticks per move
-    private float retractingStride = extensionStride / 4;
-    private int retractingDelay = 2;
 
     private float maxExtendCoefficient;
     private float progress;
@@ -40,9 +38,9 @@ public class AbstractLauncherBlockTileEntity extends TileEntity implements ITick
     protected int currentTick = 0;
 
     public LauncherState launcherState;
-    public AbstractLauncherBlockTileEntity(TileEntityType<?> p_i48289_1_)
+    public AbstractLauncherBlockTileEntity(BlockEntityType type, BlockPos pos, BlockState state)
     {
-        super(p_i48289_1_);
+        super(type,pos,state);
         states = LauncherState.values();
         launcherState = LauncherState.RETRACTED;
     }
@@ -53,6 +51,9 @@ public class AbstractLauncherBlockTileEntity extends TileEntity implements ITick
     @Override
     public void tick()
     {
+        int retractingDelay = 2;
+        // 1/stride ticks per move
+        float extensionStride = 1F;
         switch(launcherState)
         {
             case EXTENDED:
@@ -92,6 +93,7 @@ public class AbstractLauncherBlockTileEntity extends TileEntity implements ITick
                     }
                     else
                     {
+                        float retractingStride = extensionStride / 4;
                         this.progress -= retractingStride;
                         if(this.progress <= 0F)
                         {
@@ -101,9 +103,9 @@ public class AbstractLauncherBlockTileEntity extends TileEntity implements ITick
                 }
                 break;
         }
-        if(!level.isClientSide &&lastProgress != progress)
+        if(!level.isClientSide && lastProgress != progress)
         {
-            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Constants.BlockFlags.BLOCK_UPDATE + Constants.BlockFlags.NOTIFY_NEIGHBORS);
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(),1);
         }
         //LLoader.LOGGER.info("State: "+launcherState+", progr: "+progress);
     }
@@ -121,9 +123,8 @@ public class AbstractLauncherBlockTileEntity extends TileEntity implements ITick
     }
 
     @Override
-    public CompoundNBT getUpdateTag()
-    {
-        CompoundNBT nbt = super.getUpdateTag();
+    public CompoundTag getUpdateTag() {
+        CompoundTag nbt = super.getUpdateTag();
         nbt.putInt("currentTick", currentTick);
         nbt.putFloat("progress", progress);
         nbt.putBoolean("extending", extending);
@@ -131,40 +132,41 @@ public class AbstractLauncherBlockTileEntity extends TileEntity implements ITick
         return nbt;
     }
 
+
     @Nullable
     @Override
-    public SUpdateTileEntityPacket getUpdatePacket()
-    {
-        CompoundNBT tag = getUpdateTag();
-        return new SUpdateTileEntityPacket(getBlockPos(),-1, tag);
+    public Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
     }
 
     @Override
-    public void onDataPacket(NetworkManager net, SUpdateTileEntityPacket pkt)
-    {
-        CompoundNBT tag = pkt.getTag();
-        handleUpdateTag(getBlockState(), tag);
-
+    public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt) {
+        CompoundTag tag = pkt.getTag();
+        handleUpdateTag(tag);
     }
 
+
     @Override
-    public void handleUpdateTag(BlockState state, CompoundNBT tag)
+    public void handleUpdateTag(CompoundTag tag)
     {
         currentTick = tag.getInt("currentTick");
         progress = tag.getFloat("progress");
         extending = tag.getBoolean("extending");
         launcherState = states[tag.getInt("launcherState")];
-        super.handleUpdateTag(state, tag);
+        super.handleUpdateTag(tag);
     }
 
 
-
+    double lerp(float a, float b, float f)
+    {
+        return a * (1.0 - f) + (b * f);
+    }
     public float getDeltaProgress(float tickDelta)
     {
         if(tickDelta > 1.0F)
         {
             tickDelta = 1.0F;
         }
-        return MathHelper.lerp(tickDelta, this.lastProgress, this.progress);
+        return (float) lerp(tickDelta, this.lastProgress, this.progress);
     }
 }
