@@ -1,7 +1,7 @@
 package net.launchers.mod.loader;
 
 
-import net.launchers.mod.entity_renderer.abstraction.AbstractLauncherBlockTileEntityRenderer;
+import net.launchers.mod.entity_renderer.abstraction.LauncherBlockEntityRenderer;
 import net.launchers.mod.initializer.LEntities;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
@@ -15,8 +15,8 @@ public class LClientLoader
     @SubscribeEvent
     public static void registerRenderers(final EntityRenderersEvent.RegisterRenderers event)
     {
-        event.registerBlockEntityRenderer(LEntities.LAUNCHER_BLOCK_TILE_ENTITY.get(), AbstractLauncherBlockTileEntityRenderer::new);
-        event.registerBlockEntityRenderer(LEntities.POWERED_LAUNCHER_BLOCK_TILE_ENTITY.get(), AbstractLauncherBlockTileEntityRenderer::new);
-        event.registerBlockEntityRenderer(LEntities.EXTREME_LAUNCHER_BLOCK_TILE_ENTITY.get(), AbstractLauncherBlockTileEntityRenderer::new);
+        event.registerBlockEntityRenderer(LEntities.LAUNCHER_BLOCK_TILE_ENTITY.get(), LauncherBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(LEntities.POWERED_LAUNCHER_BLOCK_TILE_ENTITY.get(), LauncherBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(LEntities.EXTREME_LAUNCHER_BLOCK_TILE_ENTITY.get(), LauncherBlockEntityRenderer::new);
     }
 }

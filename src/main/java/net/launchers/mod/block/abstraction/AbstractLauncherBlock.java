@@ -1,6 +1,10 @@
 package net.launchers.mod.block.abstraction;
 
-import net.launchers.mod.entity.abstraction.AbstractLauncherBlockTileEntity;
+import net.launchers.mod.entity.ExtremeLauncherBlockEntity;
+import net.launchers.mod.entity.LauncherBlockEntity;
+import net.launchers.mod.entity.PoweredLauncherBlockEntity;
+import net.launchers.mod.entity.abstraction.AbstractLauncherBlockEntity;
+import net.launchers.mod.initializer.LEntities;
 import net.launchers.mod.loader.LLoader;
 import net.launchers.mod.network.NetworkHandler;
 import net.launchers.mod.network.packet.UnboundedEntityVelocityS2CPacket;
@@ -10,14 +14,14 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.*;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -29,9 +33,11 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.ticks.ScheduledTick;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Objects;
 
 public abstract class AbstractLauncherBlock extends BaseEntityBlock
 {
@@ -51,7 +57,7 @@ public abstract class AbstractLauncherBlock extends BaseEntityBlock
     public AbstractLauncherBlock()
     {
         super(BlockBehaviour.Properties.of(Material.PISTON).strength(0.7F, 0.6F).sound(SoundType.METAL).dynamicShape().noOcclusion());
-        this.registerDefaultState(this.getStateDefinition().any().setValue(FACING, Direction.NORTH));
+        this.registerDefaultState(this.getStateDefinition().any().setValue(FACING, Direction.NORTH).setValue(MODELS, 0));
     }
 
     @Override
@@ -59,9 +65,14 @@ public abstract class AbstractLauncherBlock extends BaseEntityBlock
         return Block.box(0F, 0F, 0F, 16F, 16F, 16F);
     }
 
+    @Override
+    public RenderShape getRenderShape(BlockState p_49232_) {
+        return RenderShape.MODEL;
+        //return super.getRenderShape(p_49232_);
+    }
 
     @Override
-    public void fallOn(Level level, BlockState p_152427_, BlockPos p_152428_, Entity entity, float distance) {
+    public void fallOn(Level level, @NotNull BlockState p_152427_, @NotNull BlockPos p_152428_, Entity entity, float distance) {
         entity.causeFallDamage(distance, 0.0F, level.damageSources().fall());
     }
 
@@ -109,7 +120,7 @@ public abstract class AbstractLauncherBlock extends BaseEntityBlock
                 Vec3 velocity = vectorForce.scale(force).add(initialVelocity);
                 entity.setDeltaMovement(velocity);
                 UnboundedEntityVelocityS2CPacket packet = new UnboundedEntityVelocityS2CPacket(entity.getId(), velocity);
-                NetworkHandler.sendToAll(packet, world.getServer().getPlayerList());
+                NetworkHandler.sendToAll(packet, Objects.requireNonNull(world.getServer()).getPlayerList());
             }
         }
     }
@@ -117,30 +128,26 @@ public abstract class AbstractLauncherBlock extends BaseEntityBlock
 
 
     @Override
-    public void neighborChanged(BlockState state, Level world, BlockPos pos, Block p_220069_4_, BlockPos neighborPos, boolean p_220069_6_)
+    public void neighborChanged(@NotNull BlockState state, Level world, @NotNull BlockPos pos, @NotNull Block p_220069_4_, @NotNull BlockPos neighborPos, boolean p_220069_6_)
     {
-        AbstractLauncherBlockTileEntity launcherBlockEntity = (AbstractLauncherBlockTileEntity) world.getBlockEntity(pos);
+        AbstractLauncherBlockEntity launcherBlockEntity = (AbstractLauncherBlockEntity) world.getBlockEntity(pos);
         boolean isRecevingRedstonePower = world.hasNeighborSignal(pos) || world.hasNeighborSignal(pos.above());
-        boolean isRetracted = launcherBlockEntity.launcherState == AbstractLauncherBlockTileEntity.LauncherState.RETRACTED;
+        assert launcherBlockEntity != null;
+        boolean isRetracted = launcherBlockEntity.launcherState == AbstractLauncherBlockEntity.LauncherState.RETRACTED;
         if(!isRetracted) return;
         if(isRecevingRedstonePower)
         {
-            world.getBlockTicks().schedule(ScheduledTick.probe(this,pos));
+            world.getBlockTicks().schedule(ScheduledTick.probe(this, pos));
         }
     }
 
     protected abstract void playLaunchSound(Level world, BlockPos pos);
 
-//    public SPlaySoundPacket createLaunchSoundPacket(double x, double y, double z)
-//    {
-//
-//        return new SPlaySoundPacket(LSounds.LAUNCHER_SOUND_EVENT.getId(), SoundSource.BLOCKS, new Vec3(x,y,z), 1F, 1F);
-//    }
     public boolean canLaunch(Level world, BlockPos pos)
     {
-        AbstractLauncherBlockTileEntity launcherBlockEntity = (AbstractLauncherBlockTileEntity) world.getBlockEntity(pos);
+        AbstractLauncherBlockEntity launcherBlockEntity = (AbstractLauncherBlockEntity) world.getBlockEntity(pos);
         BlockPos offset = pos.relative(world.getBlockState(pos).getValue(FACING));
-        return (world.getBlockState(offset).isAir() || world.getBlockState(offset).getBlock().equals(Blocks.TRIPWIRE)) && launcherBlockEntity.launcherState == AbstractLauncherBlockTileEntity.LauncherState.RETRACTED;
+        return (world.getBlockState(offset).isAir() || world.getBlockState(offset).getBlock().equals(Blocks.TRIPWIRE)) && launcherBlockEntity.launcherState == AbstractLauncherBlockEntity.LauncherState.RETRACTED;
     }
 
     @Nullable
@@ -149,13 +156,13 @@ public abstract class AbstractLauncherBlock extends BaseEntityBlock
 
     @Override
     public void tick(BlockState state, ServerLevel world, BlockPos pos, RandomSource random) {
-        LLoader.LOGGER.debug( "Launching");
+        LLoader.LOGGER.debug( "launching");
         if(canLaunch(world, pos))
         {
             List<Entity> entities = world.getEntitiesOfClass(Entity.class, new AABB(pos.relative(state.getValue(FACING))));
             launchEntities(world, pos, entities);
             playLaunchSound(world, pos);
-            ((AbstractLauncherBlockTileEntity) world.getBlockEntity(pos)).startExtending();
+            ((AbstractLauncherBlockEntity) Objects.requireNonNull(world.getBlockEntity(pos))).startExtending();
         }
     }
 
@@ -163,6 +170,22 @@ public abstract class AbstractLauncherBlock extends BaseEntityBlock
     {
         return 1;
     }
+
+    @Nullable
+    @Override
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level p_153212_, BlockState p_153213_, BlockEntityType<T> type) {
+        if(type == LEntities.LAUNCHER_BLOCK_TILE_ENTITY.get()){
+            return AbstractLauncherBlockEntity::tick;
+        }
+        if(type == LEntities.POWERED_LAUNCHER_BLOCK_TILE_ENTITY.get()){
+            return AbstractLauncherBlockEntity::tick;
+        }
+        if(type == LEntities.EXTREME_LAUNCHER_BLOCK_TILE_ENTITY.get()){
+            return AbstractLauncherBlockEntity::tick;
+        }
+        return null;
+    }
+
 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {

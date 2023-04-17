@@ -1,5 +1,4 @@
 package net.launchers.mod.network.packet;
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import net.launchers.mod.initializer.LNetwork;
 import net.launchers.mod.loader.LLoader;
@@ -10,7 +9,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.HandshakeMessages;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 
@@ -29,22 +27,7 @@ public class UnboundedEntityVelocityS2CPacket
         this.velocity = velocity;
         this.entityId = entityId;
     }
-    
-    public UnboundedEntityVelocityS2CPacket(int entityId, float x, float y, float z)
-    {
-        this(entityId, new Vec3(x, y, z));
-    }
-    
-    public UnboundedEntityVelocityS2CPacket(Entity entity, Vec3 velocity)
-    {
-        this(entity.getId(), velocity);
-    }
-    
-    public UnboundedEntityVelocityS2CPacket(Entity entity, float x, float y, float z)
-    {
-        this(entity.getId(), new Vec3(x, y, z));
-    }
-    
+
     public void sendTo(Player player)
     {
         FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
@@ -52,16 +35,17 @@ public class UnboundedEntityVelocityS2CPacket
         LNetwork.channel.send(PacketDistributor.PLAYER.with(()->(ServerPlayer) player), this);
     }
     
-    public boolean handle(Supplier<NetworkEvent.Context> ctx)
+    public void handle(Supplier<NetworkEvent.Context> ctx)
     {
         ctx.get().enqueueWork(() ->
         {
             LocalPlayer player = Minecraft.getInstance().player;
+            assert player != null;
             LLoader.LOGGER.info("Entity: "+entityId+", player: "+player.getId());
             Entity targetEntity =  player.level.getEntity(entityId);
+            assert targetEntity != null;
             targetEntity.setDeltaMovement(velocity);
         });
-        return true;
     }
     
     public void write(FriendlyByteBuf buf)

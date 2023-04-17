@@ -1,36 +1,33 @@
 package net.launchers.mod.entity.abstraction;
 
-import com.mojang.math.Constants;
-import net.launchers.mod.initializer.LEntities;
-import net.minecraft.client.renderer.FaceInfo;
-import net.minecraft.client.renderer.texture.Tickable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class AbstractLauncherBlockTileEntity extends BlockEntity implements Tickable
+public class AbstractLauncherBlockEntity extends BlockEntity
 {
-    private final VoxelShape RETRACTED_BASE_SHAPE = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 16.0D, 16.0D);
-    private final VoxelShape EXTENDED_BASE_SHAPE = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 12.0D, 16.0D);
-    private final VoxelShape SHORT_EXTENDER_SHAPE = Block.box(6.0D, 2.0D, 6.0D, 10.0D, 10.0D, 10.0D);
-    private final VoxelShape LONG_EXTENDER_SHAPE = Block.box(6.0D, 0.0D, 6.0D, 10.0D, 16.0D, 10.0D);
-    private final VoxelShape HEAD_SHAPE = Block.box(0.0D, 12.0D, 0.0D, 16.0D, 16.0D, 16.0D);
+//    private final VoxelShape RETRACTED_BASE_SHAPE = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 16.0D, 16.0D);
+//    private final VoxelShape EXTENDED_BASE_SHAPE = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 12.0D, 16.0D);
+//    private final VoxelShape SHORT_EXTENDER_SHAPE = Block.box(6.0D, 2.0D, 6.0D, 10.0D, 10.0D, 10.0D);
+//    private final VoxelShape LONG_EXTENDER_SHAPE = Block.box(6.0D, 0.0D, 6.0D, 10.0D, 16.0D, 10.0D);
+//    private final VoxelShape HEAD_SHAPE = Block.box(0.0D, 12.0D, 0.0D, 16.0D, 16.0D, 16.0D);
 
     public enum LauncherState
     {EXTENDED, RETRACTED, MOVING}
 
     public LauncherState[] states;
 
-    private float maxExtendCoefficient;
     private float progress;
     private float lastProgress;
     private boolean extending = true; // true if its extending, false if retracting
@@ -38,18 +35,18 @@ public class AbstractLauncherBlockTileEntity extends BlockEntity implements Tick
     protected int currentTick = 0;
 
     public LauncherState launcherState;
-    public AbstractLauncherBlockTileEntity(BlockEntityType type, BlockPos pos, BlockState state)
+    public AbstractLauncherBlockEntity(BlockEntityType type, BlockPos pos, BlockState state)
     {
         super(type,pos,state);
         states = LauncherState.values();
         launcherState = LauncherState.RETRACTED;
     }
-    public boolean isRetracted()
+
+    public static <T extends BlockEntity> void tick(Level level, BlockPos blockPos, BlockState blockState, T t)
     {
-        return launcherState == LauncherState.RETRACTED;
+        ((AbstractLauncherBlockEntity)t).tickExecute();
     }
-    @Override
-    public void tick()
+    public void tickExecute()
     {
         int retractingDelay = 2;
         // 1/stride ticks per move
@@ -103,12 +100,15 @@ public class AbstractLauncherBlockTileEntity extends BlockEntity implements Tick
                 }
                 break;
         }
+        assert level != null;
         if(!level.isClientSide && lastProgress != progress)
         {
-            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(),1);
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(),Block.UPDATE_CLIENTS | Block.UPDATE_NEIGHBORS);
         }
-        //LLoader.LOGGER.info("State: "+launcherState+", progr: "+progress);
+       //LLoader.LOGGER.info("state: "+launcherState+", progress: "+progress);
     }
+
+
     public void startExtending()
     {
         extending = true;
@@ -123,7 +123,7 @@ public class AbstractLauncherBlockTileEntity extends BlockEntity implements Tick
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
+    public @NotNull CompoundTag getUpdateTag() {
         CompoundTag nbt = super.getUpdateTag();
         nbt.putInt("currentTick", currentTick);
         nbt.putFloat("progress", progress);
@@ -142,6 +142,7 @@ public class AbstractLauncherBlockTileEntity extends BlockEntity implements Tick
     @Override
     public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt) {
         CompoundTag tag = pkt.getTag();
+        assert tag != null;
         handleUpdateTag(tag);
     }
 
@@ -157,16 +158,13 @@ public class AbstractLauncherBlockTileEntity extends BlockEntity implements Tick
     }
 
 
-    double lerp(float a, float b, float f)
-    {
-        return a * (1.0 - f) + (b * f);
-    }
     public float getDeltaProgress(float tickDelta)
     {
         if(tickDelta > 1.0F)
         {
             tickDelta = 1.0F;
         }
-        return (float) lerp(tickDelta, this.lastProgress, this.progress);
+
+        return Mth.lerp(tickDelta, this.lastProgress, this.progress);
     }
 }

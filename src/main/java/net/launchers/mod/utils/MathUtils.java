@@ -9,23 +9,14 @@ public final class MathUtils
 {
     public static Vec3 fromDirection(Direction direction)
     {
-        switch(direction)
-        {
-            case UP:
-                return new Vec3(0, 1, 0);
-            case DOWN:
-                return new Vec3(0, -1, 0);
-            case EAST:
-                return new Vec3(1, 0, 0);
-            case WEST:
-                return new Vec3(-1, 0, 0);
-            case NORTH:
-                return new Vec3(0, 0, -1);
-            case SOUTH:
-                return new Vec3(0, 0, 1);
-            default:
-                return new Vec3(0, 0, 0);
-        }
+        return switch (direction) {
+            case UP -> new Vec3(0, 1, 0);
+            case DOWN -> new Vec3(0, -1, 0);
+            case EAST -> new Vec3(1, 0, 0);
+            case WEST -> new Vec3(-1, 0, 0);
+            case NORTH -> new Vec3(0, 0, -1);
+            case SOUTH -> new Vec3(0, 0, 1);
+        };
     }
     
     public static AABB getExpansionBlock(BlockPos pos, Direction facing)
@@ -48,7 +39,6 @@ public final class MathUtils
             default:
                 res.expandTowards(0, 0, 0);
         }
-        System.out.println(res);
         return res;
     }
 }

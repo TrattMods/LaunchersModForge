@@ -3,11 +3,7 @@ package net.launchers.mod.loader;
 import net.launchers.mod.initializer.*;
 import net.launchers.mod.network.packet.UnboundedEntityVelocityS2CPacket;
 import net.minecraft.world.item.CreativeModeTabs;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.CreativeModeTabEvent;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -24,21 +20,18 @@ public class LLoader
 
     public LLoader()
     {
-        IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
-        bus.addListener(this::commonSetup);
-
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::commonSetup);
 
         LBlocks.initialize();
         LEntities.initialize();
         LItems.initialize();
+        LCommands.initialize();
         LSounds.initialize();
 
-        MinecraftForge.EVENT_BUS.addListener(this::onCommands);
-        MinecraftForge.EVENT_BUS.addListener(this::buildContents);
-        MinecraftForge.EVENT_BUS.register(this);
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::buildContents);
     }
 
-    public void commonSetup(FMLCommonSetupEvent event)
+    private void commonSetup(FMLCommonSetupEvent event)
     {
         int messageNumber = 0;
         LNetwork.channel.messageBuilder(UnboundedEntityVelocityS2CPacket.class, messageNumber++,
@@ -47,21 +40,12 @@ public class LLoader
                 .decoder(UnboundedEntityVelocityS2CPacket::new)
                 .consumerMainThread(UnboundedEntityVelocityS2CPacket::handle).add();
     }
-    @SubscribeEvent
-    public void buildContents(CreativeModeTabEvent.BuildContents event) {
-        // Add to ingredients tab
+    private void buildContents(CreativeModeTabEvent.BuildContents event) {
         if (event.getTab() == CreativeModeTabs.REDSTONE_BLOCKS) {
             event.accept(LItems.LAUNCHER_BLOCK_ITEM);
             event.accept(LItems.POWERED_LAUNCHER_BLOCK_ITEM);
             event.accept(LItems.EXTREME_LAUNCHER_BLOCK_ITEM);
-            event.accept(LBlocks.LAUNCHER_BLOCK); // Takes in an ItemLike, assumes block has registered item
-            event.accept(LBlocks.POWERED_LAUNCHER_BLOCK); // Takes in an ItemLike, assumes block has registered item
-            event.accept(LBlocks.EXTREME_LAUNCHER_BLOCK); // Takes in an ItemLike, assumes block has registered item
         }
     }
-    @SubscribeEvent
-    public void onCommands(RegisterCommandsEvent event)
-    {
-        LCommands.initialize(event.getDispatcher());
-    }
+
 }

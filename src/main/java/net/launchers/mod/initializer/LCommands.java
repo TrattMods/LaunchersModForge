@@ -8,6 +8,8 @@ import net.launchers.mod.block.abstraction.AbstractLauncherBlock;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.RegisterCommandsEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,8 +24,9 @@ public class LCommands
     private static final String LAUNCHER_ID = "l";
     private static final String P_LAUNCHER_ID = "p";
     private static final String E_LAUNCHER_ID = "e";
-    public static void initialize(CommandDispatcher<CommandSourceStack> dispatcher)
-    {
+
+    public static void onCommands(RegisterCommandsEvent event){
+        CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
         ArrayList<String> launchersList = new ArrayList<>();
         dispatcher.register(Commands.literal("lcalc")
                 .then(Commands.argument("first", word()).suggests(suggestedStrings())
@@ -64,10 +67,12 @@ public class LCommands
                         )
                 )
                 .executes(ctx ->
-                {
-                    return checkIdsAndPrintForce(launchersList, ctx.getSource());
-                })
+                        checkIdsAndPrintForce(launchersList, ctx.getSource()))
         );
+    }
+    public static void initialize()
+    {
+        MinecraftForge.EVENT_BUS.addListener(LCommands::onCommands);
     }
     private static boolean areLauncherIdValid(ArrayList<String> ids)
     {
@@ -104,37 +109,42 @@ public class LCommands
     private static float getForce(ArrayList<String> ids)
     {
         float base = getBaseForceByLauncherId(ids.get(0));
-        float multipier = 1F;
+        float multiplier = 1F;
         for(int i = 1; i < ids.size(); i++)
         {
-            multipier += getStackForceByLauncherId(ids.get(i));
+            multiplier += getStackForceByLauncherId(ids.get(i));
         }
-        return base * multipier;
+        return base * multiplier;
     }
 
     private static int checkIdsAndPrintForce(ArrayList<String> launchersList, CommandSourceStack context)
     {
         if(!areLauncherIdValid(launchersList))
         {
-            context.sendSystemMessage(Component.literal("\nOne or more parameters are not correct.\n" +
-                    "Usage:\n" +
-                    "l: Launcher\n" +
-                    "p: Powered Launcher\n" +
-                    "e: Extreme Launcher\n"));
+            context.sendSystemMessage(Component.literal("""
+                    One or more parameters are not correct.
+                    Usage:
+                    l: Launcher
+                    p: Powered Launcher
+                    e: Extreme Launcher
+                    """));
             launchersList.clear();
             return 0;
         }
-        String printString = "\nStack: \n";
-        for(int i = 0; i < launchersList.size(); i++)
-        {
-            printString += launchersList.get(i) + "\n";
+        StringBuilder printString = new StringBuilder("\nStack: \n");
+        for (String s : launchersList) {
+            printString.append(s).append("\n");
         }
-        printString += "Force: " + getForce(launchersList);
-        context.sendSystemMessage(Component.literal(printString));
+        var force = getForce(launchersList);
+        var height = heightFromForce(force);
+        printString.append("Force: ").append(force).append("\n").append("Expected height ±5 blocks: ").append(Math.floor(height));
+        context.sendSystemMessage(Component.literal(printString.toString()));
         launchersList.clear();
         return 1;
     }
-
+    private static float heightFromForce(float force){
+        return (float)(0.005 * Math.pow(force, 4) - 0.225 * Math.pow(force, 3) + 3.956 * Math.pow(force, 2) + 2.882 * force + 1.62);
+    }
     public static SuggestionProvider<CommandSourceStack> suggestedStrings()
     {
         ArrayList<String> suggestions = new ArrayList<>();
