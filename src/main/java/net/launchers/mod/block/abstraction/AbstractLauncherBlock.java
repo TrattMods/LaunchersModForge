@@ -1,19 +1,17 @@
 package net.launchers.mod.block.abstraction;
 
-import net.launchers.mod.entity.ExtremeLauncherBlockEntity;
-import net.launchers.mod.entity.LauncherBlockEntity;
-import net.launchers.mod.entity.PoweredLauncherBlockEntity;
 import net.launchers.mod.entity.abstraction.AbstractLauncherBlockEntity;
 import net.launchers.mod.initializer.LEntities;
 import net.launchers.mod.loader.LLoader;
 import net.launchers.mod.network.NetworkHandler;
 import net.launchers.mod.network.packet.UnboundedEntityVelocityS2CPacket;
 import net.launchers.mod.utils.MathUtils;
+import net.minecraft.client.model.geom.builders.MaterialDefinition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.*;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
@@ -27,7 +25,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
-import net.minecraft.world.level.material.Material;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -39,24 +36,23 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.Objects;
 
-public abstract class AbstractLauncherBlock extends BaseEntityBlock
-{
+public abstract class AbstractLauncherBlock extends BaseEntityBlock {
     public static final ResourceLocation LAUNCH_SOUND = new ResourceLocation(LLoader.MOD_ID, "launcher_block_launch");
     public static final IntegerProperty MODELS = IntegerProperty.create("models", 0, 2);
     public static final DirectionProperty FACING;
 
-    private float launchForce = 1F;
-    private int maxStackable = 4;
-    protected float stackPowerPercentage;
-    public float stackMultiplier;
-    public float baseMultiplier;
-    static
-    {
+    static {
         FACING = DirectionalBlock.FACING;
     }
-    public AbstractLauncherBlock()
-    {
-        super(BlockBehaviour.Properties.of(Material.PISTON).strength(0.7F, 0.6F).sound(SoundType.METAL).dynamicShape().noOcclusion());
+
+    public float stackMultiplier;
+    public float baseMultiplier;
+    protected float stackPowerPercentage;
+    private float launchForce = 1F;
+    private int maxStackable = 4;
+
+    public AbstractLauncherBlock() {
+        super(BlockBehaviour.Properties.of().strength(0.7F, 0.6F).sound(SoundType.METAL).dynamicShape().noOcclusion());
         this.registerDefaultState(this.getStateDefinition().any().setValue(FACING, Direction.NORTH).setValue(MODELS, 0));
     }
 
@@ -83,12 +79,9 @@ public abstract class AbstractLauncherBlock extends BaseEntityBlock
     }
 
 
-    public void launchEntities(Level world, BlockPos pos, List<? extends Entity> entities)
-    {
-        if(!world.isClientSide)
-        {
-            if(entities.size() < 1)
-            {
+    public void launchEntities(Level world, BlockPos pos, List<? extends Entity> entities) {
+        if (!world.isClientSide) {
+            if (entities.size() < 1) {
                 return;
             }
             float force = launchForce * baseMultiplier;
@@ -98,23 +91,18 @@ public abstract class AbstractLauncherBlock extends BaseEntityBlock
             BlockPos currentPos = pos.relative(stackDirection);
             int currentIndex = 1;
             double multiplier = 1F;
-            if(!stackDirection.equals(Direction.UP) && !stackDirection.equals(Direction.DOWN))
-            {
+            if (!stackDirection.equals(Direction.UP) && !stackDirection.equals(Direction.DOWN)) {
                 multiplier *= 1.75F;
             }
             Block current;
-            while(currentIndex < maxStackable &&
-                    ((current = world.getBlockState(currentPos).getBlock()) instanceof AbstractLauncherBlock &&
-                            world.getBlockState(currentPos).getValue(FACING).equals(parentState.getValue(FACING))))
-            {
+            while (currentIndex < maxStackable && ((current = world.getBlockState(currentPos).getBlock()) instanceof AbstractLauncherBlock && world.getBlockState(currentPos).getValue(FACING).equals(parentState.getValue(FACING)))) {
                 AbstractLauncherBlock launcherBlock = (AbstractLauncherBlock) current;
                 multiplier += launcherBlock.stackMultiplier;
                 currentPos = currentPos.relative(stackDirection);
                 currentIndex++;
             }
             force *= multiplier;
-            for(Entity entity : entities)
-            {
+            for (Entity entity : entities) {
                 Vec3 initialVelocity = entity.getDeltaMovement();
                 Vec3 vectorForce = MathUtils.fromDirection(world.getBlockState(pos).getValue(AbstractLauncherBlock.FACING));
                 Vec3 velocity = vectorForce.scale(force).add(initialVelocity);
@@ -126,25 +114,21 @@ public abstract class AbstractLauncherBlock extends BaseEntityBlock
     }
 
 
-
     @Override
-    public void neighborChanged(@NotNull BlockState state, Level world, @NotNull BlockPos pos, @NotNull Block p_220069_4_, @NotNull BlockPos neighborPos, boolean p_220069_6_)
-    {
+    public void neighborChanged(@NotNull BlockState state, Level world, @NotNull BlockPos pos, @NotNull Block p_220069_4_, @NotNull BlockPos neighborPos, boolean p_220069_6_) {
         AbstractLauncherBlockEntity launcherBlockEntity = (AbstractLauncherBlockEntity) world.getBlockEntity(pos);
         boolean isRecevingRedstonePower = world.hasNeighborSignal(pos) || world.hasNeighborSignal(pos.above());
         assert launcherBlockEntity != null;
         boolean isRetracted = launcherBlockEntity.launcherState == AbstractLauncherBlockEntity.LauncherState.RETRACTED;
-        if(!isRetracted) return;
-        if(isRecevingRedstonePower)
-        {
+        if (!isRetracted) return;
+        if (isRecevingRedstonePower) {
             world.getBlockTicks().schedule(ScheduledTick.probe(this, pos));
         }
     }
 
     protected abstract void playLaunchSound(Level world, BlockPos pos);
 
-    public boolean canLaunch(Level world, BlockPos pos)
-    {
+    public boolean canLaunch(Level world, BlockPos pos) {
         AbstractLauncherBlockEntity launcherBlockEntity = (AbstractLauncherBlockEntity) world.getBlockEntity(pos);
         BlockPos offset = pos.relative(world.getBlockState(pos).getValue(FACING));
         return (world.getBlockState(offset).isAir() || world.getBlockState(offset).getBlock().equals(Blocks.TRIPWIRE)) && launcherBlockEntity.launcherState == AbstractLauncherBlockEntity.LauncherState.RETRACTED;
@@ -156,9 +140,8 @@ public abstract class AbstractLauncherBlock extends BaseEntityBlock
 
     @Override
     public void tick(BlockState state, ServerLevel world, BlockPos pos, RandomSource random) {
-        LLoader.LOGGER.debug( "launching");
-        if(canLaunch(world, pos))
-        {
+        LLoader.LOGGER.debug("launching");
+        if (canLaunch(world, pos)) {
             List<Entity> entities = world.getEntitiesOfClass(Entity.class, new AABB(pos.relative(state.getValue(FACING))));
             launchEntities(world, pos, entities);
             playLaunchSound(world, pos);
@@ -166,21 +149,20 @@ public abstract class AbstractLauncherBlock extends BaseEntityBlock
         }
     }
 
-    public int getTickRate(Level worldView)
-    {
+    public int getTickRate(Level worldView) {
         return 1;
     }
 
     @Nullable
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level p_153212_, BlockState p_153213_, BlockEntityType<T> type) {
-        if(type == LEntities.LAUNCHER_BLOCK_TILE_ENTITY.get()){
+        if (type == LEntities.LAUNCHER_BLOCK_TILE_ENTITY.get()) {
             return AbstractLauncherBlockEntity::tick;
         }
-        if(type == LEntities.POWERED_LAUNCHER_BLOCK_TILE_ENTITY.get()){
+        if (type == LEntities.POWERED_LAUNCHER_BLOCK_TILE_ENTITY.get()) {
             return AbstractLauncherBlockEntity::tick;
         }
-        if(type == LEntities.EXTREME_LAUNCHER_BLOCK_TILE_ENTITY.get()){
+        if (type == LEntities.EXTREME_LAUNCHER_BLOCK_TILE_ENTITY.get()) {
             return AbstractLauncherBlockEntity::tick;
         }
         return null;
@@ -198,8 +180,8 @@ public abstract class AbstractLauncherBlock extends BaseEntityBlock
     }
 
 
-    @Override public BlockState mirror(BlockState state, Mirror mirrorIn)
-    {
+    @Override
+    public BlockState mirror(BlockState state, Mirror mirrorIn) {
         return state.rotate(mirrorIn.getRotation(state.getValue(FACING)));
     }
 }

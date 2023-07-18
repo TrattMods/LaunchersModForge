@@ -3,7 +3,7 @@ package net.launchers.mod.loader;
 import net.launchers.mod.initializer.*;
 import net.launchers.mod.network.packet.UnboundedEntityVelocityS2CPacket;
 import net.minecraft.world.item.CreativeModeTabs;
-import net.minecraftforge.event.CreativeModeTabEvent;
+import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -13,13 +13,11 @@ import org.apache.logging.log4j.Logger;
 
 
 @Mod(LLoader.MOD_ID)
-public class LLoader
-{
+public class LLoader {
     public static final Logger LOGGER = LogManager.getLogger();
     public static final String MOD_ID = "launchersmodforge";
 
-    public LLoader()
-    {
+    public LLoader() {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::commonSetup);
 
         LBlocks.initialize();
@@ -31,17 +29,18 @@ public class LLoader
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::buildContents);
     }
 
-    private void commonSetup(FMLCommonSetupEvent event)
-    {
+    private void commonSetup(FMLCommonSetupEvent event) {
         int messageNumber = 0;
-        LNetwork.channel.messageBuilder(UnboundedEntityVelocityS2CPacket.class, messageNumber++,
-                NetworkDirection.PLAY_TO_CLIENT)
+        LNetwork.channel
+                .messageBuilder(UnboundedEntityVelocityS2CPacket.class, messageNumber++, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(UnboundedEntityVelocityS2CPacket::write)
                 .decoder(UnboundedEntityVelocityS2CPacket::new)
-                .consumerMainThread(UnboundedEntityVelocityS2CPacket::handle).add();
+                .consumerMainThread(UnboundedEntityVelocityS2CPacket::handle)
+                .add();
     }
-    private void buildContents(CreativeModeTabEvent.BuildContents event) {
-        if (event.getTab() == CreativeModeTabs.REDSTONE_BLOCKS) {
+
+    private void buildContents(BuildCreativeModeTabContentsEvent event) {
+        if (event.getTabKey() == CreativeModeTabs.REDSTONE_BLOCKS) {
             event.accept(LItems.LAUNCHER_BLOCK_ITEM);
             event.accept(LItems.POWERED_LAUNCHER_BLOCK_ITEM);
             event.accept(LItems.EXTREME_LAUNCHER_BLOCK_ITEM);
